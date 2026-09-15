@@ -1,9 +1,14 @@
+const Cart = require('../models/cart.model'); 
+const Product = require('../models/product.model');
+const Ticket = require('../models/ticket.model');
+const passport = require('passport');
+const { checkRole } = require('../middlewares/auth.middleware');
 const express = require('express');
 const cartModel = require('../models/cart.model'); // Importamos el modelo de Mongoose de carritos
 
 const router = express.Router();
 
-// 1. POST /api/carts (Crear un carrito nuevo vacío)
+// 2. POST /api/carts (Crear un carrito nuevo vacío)
 router.post('/', async (req, res) => {
     try {
         const newCart = await cartModel.create({ products: [] });
@@ -143,6 +148,62 @@ router.delete('/:cid', async (req, res) => {
         res.json({ status: 'success', message: 'Carrito vaciado correctamente', payload: clearedCart });
     } catch (error) {
         res.status(500).json({ status: 'error', message: error.message });
+    }
+});
+
+router.post('/:cid/purchase', passport.authenticate('jwt', { session: false }), checkRole(['user']), async (req, res) => {
+    try {
+        const cartId = req.params.cid;
+        // Usamos populate para traer los datos completos de los productos
+        const cart = await Cart.findById(cartId).populate('products.product');
+
+        if (!cart) return res.status(404).json({ status: 'error', message: 'Carrito no encontrado' });
+
+        let totalAmount = 0;
+        let productsOutOfStock = [];
+
+        // Evaluamos el stock de cada producto en el carrito
+        for (const item of cart.products) {
+            const product = item.product;
+            
+            if (product.stock >= item.quantity) {
+                // Hay stock suficiente: restamos el stock y sumamos al precio total
+                product.stock -= item.quantity;
+                await product.save();
+                totalAmount += (product.price * item.quantity);
+            } else {
+                // No hay stock: guardamos el item para que se quede en el carrito
+                productsOutOfStock.push(item);
+            }
+        }
+
+        // Si se compró al menos un producto, generamos el Ticket
+        if (totalAmount > 0) {
+            const ticket = await Ticket.create({
+                amount: totalAmount,
+                purchaser: req.user.email // El email viene limpio y seguro desde el token
+            });
+
+            // Actualizamos el carrito dejando solo los productos que no se pudieron comprar
+            cart.products = productsOutOfStock;
+            await cart.save();
+
+            return res.json({ 
+                status: 'success', 
+                message: 'Compra procesada exitosamente', 
+                ticket,
+                productos_sin_stock: productsOutOfStock.length > 0 ? productsOutOfStock : 'Todos los productos fueron comprados'
+            });
+        } else {
+            return res.status(400).json({ 
+                status: 'error', 
+                message: 'No se pudo procesar la compra. No hay stock suficiente de los productos seleccionados.',
+                productos_sin_stock: productsOutOfStock
+            });
+        }
+
+    } catch (error) {
+        res.status(500).json({ status: 'error', message: 'Error interno del servidor', error: error.message });
     }
 });
 

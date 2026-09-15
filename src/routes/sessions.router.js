@@ -1,3 +1,6 @@
+const jwt = require('jsonwebtoken');
+const { sendRecoveryMail } = require('../services/mail.service');
+const userRepository = require('../repositories/user.repository');
 const express = require('express');
 const userModel = require('../models/user.model');
 const { createHash, isValidPassword, generateToken } = require('../utils');
@@ -61,14 +64,56 @@ router.post('/login', async (req, res) => {
     }
 });
 
-// 3. Ruta Current (Validación de Token con Passport)
+// 3. Ruta Current
 router.get('/current', passport.authenticate('jwt', { session: false }), (req, res) => {
-    // Si el token es válido, passport extrae los datos y los deja en req.user
+    // Pasamos el usuario de Passport por el Repository/DTO
+    const safeUser = userRepository.getCurrentUser(req.user);
+    
     res.json({ 
         status: 'success', 
-        message: 'Usuario autenticado',
-        payload: req.user 
+        message: 'Usuario autenticado de forma segura',
+        payload: safeUser 
     });
+});
+
+// Ruta para solicitar la recuperación
+router.post('/forgot-password', async (req, res) => {
+    try {
+        const { email } = req.body;
+        const user = await userModel.findOne({ email });
+        if (!user) return res.status(404).json({ status: 'error', message: 'Usuario no encontrado' });
+
+        // Cumplimos la consigna: Token que expira en 1 hora
+        const recoveryToken = jwt.sign({ email }, process.env.PRIVATE_KEY || "CoderSecretKey-Backend2", { expiresIn: '1h' });
+        
+        await sendRecoveryMail(email, recoveryToken);
+        res.json({ status: 'success', message: 'Correo de recuperación enviado' });
+    } catch (error) {
+        res.status(500).json({ status: 'error', message: 'Error al enviar el correo' });
+    }
+});
+
+// Ruta para restablecer la contraseña
+router.post('/reset-password', async (req, res) => {
+    try {
+        const { token, newPassword } = req.body;
+        
+        // Verificamos el token (si pasó más de 1 hora, esto tira error y va al catch)
+        const decoded = jwt.verify(token, process.env.PRIVATE_KEY || "CoderSecretKey-Backend2");
+        const user = await userModel.findOne({ email: decoded.email });
+
+        // Evita que ponga la misma contraseña de antes
+        if (isValidPassword(user, newPassword)) {
+            return res.status(400).json({ status: 'error', message: 'No puedes usar tu contraseña actual' });
+        }
+
+        user.password = createHash(newPassword);
+        await user.save();
+
+        res.json({ status: 'success', message: 'Contraseña actualizada correctamente' });
+    } catch (error) {
+        res.status(400).json({ status: 'error', message: 'El enlace expiró o es inválido. Solicita uno nuevo.' });
+    }
 });
 
 module.exports = router;

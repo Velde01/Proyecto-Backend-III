@@ -1,3 +1,5 @@
+const passport = require('passport');
+const { checkRole } = require('../middlewares/auth.middleware');
 const express = require('express');
 const productModel = require('../models/product.model'); // Usamos el modelo de Mongoose
 
@@ -70,7 +72,7 @@ router.get('/:pid', async (req, res) => {
 });
 
 // 3. POST /api/products (Crear nuevo producto)
-router.post('/', async (req, res) => {
+router.post('/', passport.authenticate('jwt', { session: false }), checkRole(['admin']), async (req, res) => {
     try {
         const newProduct = await productModel.create(req.body);
         res.status(201).json({ status: 'success', payload: newProduct });
@@ -80,7 +82,7 @@ router.post('/', async (req, res) => {
 });
 
 // 4. PUT /api/products/:pid (Actualizar producto)
-router.put('/:pid', async (req, res) => {
+router.put('/', passport.authenticate('jwt', { session: false }), checkRole(['admin']), async (req, res) => {
     try {
         const updatedProduct = await productModel.findByIdAndUpdate(req.params.pid, req.body, { new: true });
         if (!updatedProduct) return res.status(404).json({ status: 'error', message: 'Producto no encontrado' });
@@ -91,7 +93,7 @@ router.put('/:pid', async (req, res) => {
 });
 
 // 5. DELETE /api/products/:pid (Eliminar producto)
-router.delete('/:pid', async (req, res) => {
+router.delete('/', passport.authenticate('jwt', { session: false }), checkRole(['admin']), async (req, res) => {
     try {
         const deletedProduct = await productModel.findByIdAndDelete(req.params.pid);
         if (!deletedProduct) return res.status(404).json({ status: 'error', message: 'Producto no encontrado' });
