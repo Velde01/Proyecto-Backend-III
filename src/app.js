@@ -2,13 +2,15 @@ require('dotenv').config();
 const express = require('express');
 const { engine } = require('express-handlebars');
 const path = require('path');
-const passport = require('passport'); // Importamos passport
-const initializePassport = require('./config/passport.config'); // Importamos tu configuración
+const passport = require('passport'); 
+const initializePassport = require('./config/passport.config'); 
 
 const productsRouter = require('./routes/products.router');
 const cartsRouter = require('./routes/carts.router');
-const viewsRouter = require('./routes/views.router'); 
-const sessionsRouter = require('./routes/sessions.router'); // Importamos el router de sesiones
+const viewsRouter = require('./routes/views.router');
+const sessionsRouter = require('./routes/sessions.router'); 
+const mocksRouter = require('./routes/mocks.router'); 
+const usersRouter = require('./routes/users.router.js');
 
 const app = express();
 
@@ -29,7 +31,9 @@ app.set('views', path.join(__dirname, 'views'));
 // Rutas
 app.use('/api/products', productsRouter);
 app.use('/api/carts', cartsRouter);
-app.use('/api/sessions', sessionsRouter); // Conectamos los endpoints de login/register
-app.use('/', viewsRouter); 
+app.use('/api/sessions', sessionsRouter); 
+app.use('/api/mocks', mocksRouter); 
+app.use('/api/users', usersRouter);
+app.use('/', viewsRouter);
 
 module.exports = app;
