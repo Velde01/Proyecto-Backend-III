@@ -11,6 +11,7 @@ const viewsRouter = require('./routes/views.router');
 const sessionsRouter = require('./routes/sessions.router'); 
 const mocksRouter = require('./routes/mocks.router'); 
 const usersRouter = require('./routes/users.router.js');
+const petsRouter = require('./routes/pets.router');
 
 const app = express();
 
@@ -34,6 +35,7 @@ app.use('/api/carts', cartsRouter);
 app.use('/api/sessions', sessionsRouter); 
 app.use('/api/mocks', mocksRouter); 
 app.use('/api/users', usersRouter);
+app.use('/api/pets', petsRouter);
 app.use('/', viewsRouter);
 
 module.exports = app;

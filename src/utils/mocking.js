@@ -1,5 +1,5 @@
 const { faker } = require('@faker-js/faker');
-const { createHash } = require('../utils'); // Ajustá la ruta según dónde esté tu utils.js
+const { createHash } = require('../utils'); 
 
 const generateUsers = (quantity) => {
     const users = [];
@@ -23,4 +23,21 @@ const generateUsers = (quantity) => {
     return users;
 };
 
-module.exports = { generateUsers };
+const generatePets = (quantity) => {
+    const pets = [];
+    
+    for (let i = 0; i < quantity; i++) {
+        pets.push({
+            name: `Mascota-${i + 1}`,
+            specie: "dog",
+            birthDate: new Date(),
+            adopted: false,
+            owner: null,
+            image: "https://via.placeholder.com/150"
+        });
+    }
+    
+    return pets;
+};
+
+module.exports = { generateUsers, generatePets };
