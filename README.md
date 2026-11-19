@@ -23,6 +23,7 @@ La imagen oficial de este proyecto está construida con `npm ci --omit=dev` (sol
 ### Construir la imagen localmente:
 ```bash
 docker build -t velde01/ecommerce-backend:1.0.0 .
+```
 
 ### Instrucciones para levantar con Docker:
 La aplicación requiere variables de entorno (especialmente `MONGO_URI`) para iniciar la conexión a la base de datos.
@@ -52,9 +53,9 @@ Una vez levantado el servidor, puedes acceder a la documentación gráfica desde
 `http://localhost:8080/apidocs`
 
 ## 🧪 Testing Funcional
-Se implementaron 6 pruebas funcionales automatizadas utilizando **Mocha, Chai, Supertest** (recibiendo directamente la instancia `app` de Express) y **MongoDB Memory Server** para el router de adopciones (`/api/adoptions`).
+Se implementaron **10 pruebas funcionales automatizadas** utilizando **Mocha, Chai, Supertest** (recibiendo directamente la instancia `app` de Express) y **MongoDB Memory Server** para el router de adopciones (`/api/adoptions`).
 
-Los tests son completamente independientes: no requieren levantar el servidor manualmente ni contar con conexión externa a MongoDB Atlas, y validan tanto casos de éxito reales (`201`, `200`) como respuestas de error (`404`).
+Los tests son completamente independientes: no requieren levantar el servidor manualmente ni contar con conexión externa a MongoDB Atlas, y validan tanto casos de éxito reales (`200`, `201`, verificación de estado en base de datos) como reglas de negocio y respuestas de error (`400` por mascota ya adoptada, `404` por IDs inexistentes o con formato inválido).
 
 Para correr la suite de tests:
 ```bash

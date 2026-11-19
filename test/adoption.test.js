@@ -50,7 +50,15 @@ describe('Testing funcional del Router de Adopciones (/api/adoptions)', function
         await mongoServer.stop();
     });
 
-    it('POST /api/adoptions/:uid/:pid debe crear una adopción real y devolver 201', async () => {
+    it('1. GET /api/adoptions debe devolver 200 y un array vacío inicialmente', async () => {
+        const { statusCode, body } = await requester.get('/api/adoptions');
+
+        expect(statusCode).to.equal(200);
+        expect(body.status).to.equal('success');
+        expect(body.payload).to.be.an('array').that.is.empty;
+    });
+
+    it('2. POST /api/adoptions/:uid/:pid debe crear una adopción real, devolver 201 y marcar la mascota como adoptada', async () => {
         const { statusCode, body } = await requester.post(`/api/adoptions/${testUser._id}/${testPet._id}`);
 
         expect(statusCode).to.equal(201);
@@ -59,27 +67,41 @@ describe('Testing funcional del Router de Adopciones (/api/adoptions)', function
         expect(body.payload.owner).to.equal(testUser._id.toString());
         expect(body.payload.pet).to.equal(testPet._id.toString());
 
+        const updatedPet = await petModel.findById(testPet._id);
+        expect(updatedPet.adopted).to.equal(true);
+        expect(updatedPet.owner.toString()).to.equal(testUser._id.toString());
+
         createdAdoptionId = body.payload._id;
     });
 
-    it('GET /api/adoptions debe devolver 200 y un array con la adopción creada', async () => {
+    it('3. POST /api/adoptions/:uid/:pid debe devolver 400 si la mascota ya fue adoptada', async () => {
+        const { statusCode, body } = await requester.post(`/api/adoptions/${testUser._id}/${testPet._id}`);
+
+        expect(statusCode).to.equal(400);
+        expect(body.status).to.equal('error');
+        expect(body.message).to.equal('La mascota ya fue adoptada');
+    });
+
+    it('4. GET /api/adoptions debe devolver 200 y un array con la adopción creada', async () => {
         const { statusCode, body } = await requester.get('/api/adoptions');
 
         expect(statusCode).to.equal(200);
         expect(body.status).to.equal('success');
-        expect(body.payload).to.be.an('array');
-        expect(body.payload.length).to.be.greaterThan(0);
+        expect(body.payload).to.be.an('array').with.lengthOf(1);
+        expect(body.payload[0]._id).to.equal(createdAdoptionId);
     });
 
-    it('GET /api/adoptions/:aid debe devolver 200 y la adopción específica por ID', async () => {
+    it('5. GET /api/adoptions/:aid debe devolver 200 y la adopción específica por ID', async () => {
         const { statusCode, body } = await requester.get(`/api/adoptions/${createdAdoptionId}`);
 
         expect(statusCode).to.equal(200);
         expect(body.status).to.equal('success');
         expect(body.payload._id).to.equal(createdAdoptionId);
+        expect(body.payload.owner).to.equal(testUser._id.toString());
+        expect(body.payload.pet).to.equal(testPet._id.toString());
     });
 
-    it('GET /api/adoptions/:aid debe devolver 404 si la adopción no existe', async () => {
+    it('6. GET /api/adoptions/:aid debe devolver 404 si la adopción no existe', async () => {
         const fakeId = new mongoose.Types.ObjectId();
         const { statusCode, body } = await requester.get(`/api/adoptions/${fakeId}`);
 
@@ -87,7 +109,14 @@ describe('Testing funcional del Router de Adopciones (/api/adoptions)', function
         expect(body.status).to.equal('error');
     });
 
-    it('POST /api/adoptions/:uid/:pid debe devolver 404 si el usuario no existe', async () => {
+    it('7. GET /api/adoptions/:aid debe devolver 404 si el ID tiene formato inválido', async () => {
+        const { statusCode, body } = await requester.get('/api/adoptions/id-invalido-123');
+
+        expect(statusCode).to.equal(404);
+        expect(body.status).to.equal('error');
+    });
+
+    it('8. POST /api/adoptions/:uid/:pid debe devolver 404 si el usuario no existe', async () => {
         const fakeUserId = new mongoose.Types.ObjectId();
         const { statusCode, body } = await requester.post(`/api/adoptions/${fakeUserId}/${testPet._id}`);
 
@@ -95,9 +124,16 @@ describe('Testing funcional del Router de Adopciones (/api/adoptions)', function
         expect(body.status).to.equal('error');
     });
 
-    it('POST /api/adoptions/:uid/:pid debe devolver 404 si la mascota no existe', async () => {
+    it('9. POST /api/adoptions/:uid/:pid debe devolver 404 si la mascota no existe', async () => {
         const fakePetId = new mongoose.Types.ObjectId();
         const { statusCode, body } = await requester.post(`/api/adoptions/${testUser._id}/${fakePetId}`);
+
+        expect(statusCode).to.equal(404);
+        expect(body.status).to.equal('error');
+    });
+
+    it('10. POST /api/adoptions/:uid/:pid debe devolver 404 si los IDs tienen formato inválido', async () => {
+        const { statusCode, body } = await requester.post('/api/adoptions/uid-invalido/pid-invalido');
 
         expect(statusCode).to.equal(404);
         expect(body.status).to.equal('error');
